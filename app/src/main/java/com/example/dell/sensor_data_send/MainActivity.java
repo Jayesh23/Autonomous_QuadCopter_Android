@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothSocket;
+import android.content.BroadcastReceiver;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
@@ -15,23 +16,31 @@ import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.EditText;
-import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Button;
 import android.widget.Toast;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+
+import fi.iki.elonen.NanoHTTPD;
+
+import static android.R.attr.port;
+import static android.provider.ContactsContract.CommonDataKinds.Website.URL;
+import com.example.dell.sensor_data_send.MainController;
 
 public class MainActivity extends Activity
 {
 
     private static final int REQUEST_ENABLE_BT = 1;
+
 
     BluetoothAdapter bluetoothAdapter;
 
@@ -40,9 +49,11 @@ public class MainActivity extends Activity
     TextView ang, speed;
     Button calibButton, constButton;
 
-
     TextView textInfo, textStatus;
     ListView listViewPairedDevice;
+
+    //MainController Thrust = new MainController(new MainActivity());
+    float meanThrust;
 
     ArrayAdapter<BluetoothDevice> pairedDeviceAdapter;
     private UUID myUUID;
@@ -52,6 +63,8 @@ public class MainActivity extends Activity
     ThreadConnectBTdevice myThreadConnectBTdevice;
     ThreadConnected myThreadConnected;
 
+
+    public MyServer server;
     private String text1, text2;
     float kp, ki, kd;
     EditText c11, c12, c13, c21, c22, c23, c31, c32, c33;
@@ -158,6 +171,8 @@ public class MainActivity extends Activity
                 ki = Float.parseFloat(c32.getText().toString());
                 kd = Float.parseFloat(c33.getText().toString());
                 mainController.yawRegulator.setCoefficients(kp, ki, kd);
+
+
             }
         });
     }
@@ -171,6 +186,7 @@ public class MainActivity extends Activity
             Intent enableIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
             startActivityForResult(enableIntent, REQUEST_ENABLE_BT);
         }
+
 
         setup();
     }
@@ -321,6 +337,31 @@ public class MainActivity extends Activity
 
     }
 
+    public class MyServer extends NanoHTTPD {
+        private final static int PORT = 8080;
+
+        public MyServer() throws IOException {
+            super(PORT);
+            start();
+            System.out.println( "\nRunning! Point your browers to http://localhost:8080/ \n" );
+        }
+
+        @Override
+        public Response serve(IHTTPSession session) {
+            String msg = "<html><body><h1>Command : </h1>\n";
+            msg += "<p>" + session.getUri() + " !</p>";
+            if(msg.equals("stop"))
+            {
+                return newFixedLengthResponse(msg + "stop" + "</body></html>\n" );
+            }
+            else {
+
+
+                return newFixedLengthResponse(msg + "</body></html>\n");
+            }
+        }
+    }
+
     /*
     ThreadConnected:
     Background Thread to handle Bluetooth data communication
@@ -427,6 +468,11 @@ public class MainActivity extends Activity
     protected void onResume() {
         super.onResume();
         try {
+            server = new MyServer();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        try {
             mainController.start();
         } catch (Exception e) {
             e.printStackTrace();
@@ -438,6 +484,10 @@ public class MainActivity extends Activity
     {
         super.onPause();
         mainController.stop();
+
+        if(server != null) {
+            server.stop();
+        }
     }
 
     private MainController mainController;

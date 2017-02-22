@@ -30,7 +30,8 @@ public class MainController
     public void start() throws Exception {
         // Initializations.
         regulatorEnabled = true;
-        meanThrust = 150.0f;
+        //meanThrust = 150.0f;
+
 
         // Start the sensors.
         posRotSensors.resume();
@@ -188,7 +189,7 @@ public class MainController
     }
 
     private MainActivity activity;
-    private float meanThrust, yawAngleTarget, pitchAngleTarget, rollAngleTarget;
+    public float meanThrust, yawAngleTarget, pitchAngleTarget, rollAngleTarget;
     public PosRotSensors posRotSensors;
     private MotorsPowers motorsPowers;
     private boolean regulatorEnabled;
