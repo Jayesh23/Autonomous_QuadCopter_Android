@@ -81,7 +81,6 @@ public class MainActivity extends Activity
             speed.setText(text2);
 
 
-
             try {
                     byte[] b = text2.getBytes();
                     if (b != null) {
