@@ -53,7 +53,7 @@ public class MainActivity extends Activity
     ListView listViewPairedDevice;
 
     //MainController Thrust = new MainController(new MainActivity());
-    float meanThrust;
+    //float meanThrust;
 
     ArrayAdapter<BluetoothDevice> pairedDeviceAdapter;
     private UUID myUUID;
