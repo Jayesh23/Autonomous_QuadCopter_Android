@@ -33,6 +33,7 @@ import java.util.UUID;
 import fi.iki.elonen.NanoHTTPD;
 
 import static android.R.attr.port;
+import static android.R.attr.sessionService;
 import static android.provider.ContactsContract.CommonDataKinds.Website.URL;
 import com.example.dell.sensor_data_send.MainController;
 
@@ -64,36 +65,39 @@ public class MainActivity extends Activity
     ThreadConnected myThreadConnected;
 
 
+
     public MyServer server;
     private String text1, text2;
     float kp, ki, kd;
     EditText c11, c12, c13, c21, c22, c23, c31, c32, c33;
 
-    private Handler mHandler = new Handler();
+    public Handler mHandler = new Handler();
 
-    private Runnable mWaitRunnable = new Runnable() {
+    public Runnable mWaitRunnable = new Runnable() {
         public void run() {
             text1 = PosRotSensors.text;
             ang.setText(text1);
             text2 = MainController.values;
             speed.setText(text2);
 
+
+
             try {
-                byte[] b = text2.getBytes();
-                if(b != null){
+                    byte[] b = text2.getBytes();
+                    if (b != null) {
                     myThreadConnected.write(b);
-                    Log.i("TExt2 bytes" , text2);
-                   // Log.i(TAG,"SENT!!!");
-                }else{
-                    Log.e("NULL","NULL getBytes");
+                        Log.i("TExt2 bytes", text2);
+                        // Log.i(TAG,"SENT!!!");
+                    } else {
+                        Log.e("NULL", "NULL getBytes");
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    Log.e("string", "error");
+                } finally {
+                    // Log.i(TAG,"DONE!!");
                 }
-            }catch( Exception e)
-            {
-                e.printStackTrace();
-                Log.e("string","error");
-            }finally{
-               // Log.i(TAG,"DONE!!");
-            }
+
 
             mHandler.postDelayed(mWaitRunnable, 100);
         }
@@ -350,17 +354,28 @@ public class MainActivity extends Activity
         public Response serve(IHTTPSession session) {
             String msg = "<html><body><h1>Command : </h1>\n";
             msg += "<p>" + session.getUri() + " !</p>";
+            if(msg.equals("start"))
+            {
+
+                try {
+                    mainController.start();
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+                return newFixedLengthResponse(msg + "start" + "</body><html>\n");
+            }
             if(msg.equals("stop"))
             {
+                mainController.stop();
                 return newFixedLengthResponse(msg + "stop" + "</body></html>\n" );
             }
             else {
-
-
                 return newFixedLengthResponse(msg + "</body></html>\n");
             }
         }
     }
+
+
 
     /*
     ThreadConnected:

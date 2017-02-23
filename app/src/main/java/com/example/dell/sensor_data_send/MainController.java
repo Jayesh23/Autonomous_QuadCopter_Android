@@ -30,8 +30,7 @@ public class MainController
     public void start() throws Exception {
         // Initializations.
         regulatorEnabled = true;
-        //meanThrust = 150.0f;
-
+        meanThrust = 150.0f;
 
         // Start the sensors.
         posRotSensors.resume();
