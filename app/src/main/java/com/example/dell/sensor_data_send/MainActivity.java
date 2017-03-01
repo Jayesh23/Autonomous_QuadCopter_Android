@@ -26,15 +26,19 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
 import fi.iki.elonen.NanoHTTPD;
 
+import static android.R.attr.constantSize;
 import static android.R.attr.port;
 import static android.R.attr.sessionService;
 import static android.provider.ContactsContract.CommonDataKinds.Website.URL;
+import static com.example.dell.sensor_data_send.R.id.constants;
+
 import com.example.dell.sensor_data_send.MainController;
 
 public class MainActivity extends Activity
@@ -147,8 +151,6 @@ public class MainActivity extends Activity
         ang = (TextView)findViewById(R.id.angles);
         speed = new TextView(this);
         speed = (TextView)findViewById(R.id.motorSpeeds);
-        ang.setText(text1);
-        speed.setText(text2);
         mHandler.postDelayed(mWaitRunnable, 100);
         calibButton = (Button)findViewById(R.id.calbutton);
         calibButton.setOnClickListener(new View.OnClickListener() {
@@ -157,7 +159,7 @@ public class MainActivity extends Activity
                 mainController.posRotSensors.setCurrentStateAsZero();
             }
         });
-        constButton = (Button)findViewById(R.id.constants);
+        constButton = (Button)findViewById(constants);
         constButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View vw) {
@@ -165,17 +167,15 @@ public class MainActivity extends Activity
                 kp = Float.parseFloat(c11.getText().toString());
                 ki = Float.parseFloat(c12.getText().toString());
                 kd = Float.parseFloat(c13.getText().toString());
-                mainController.rollRegulator.setCoefficients(kp, ki, kd);
+                 mainController.rollRegulator.setCoefficients(kp, ki, kd);
                 kp = Float.parseFloat(c21.getText().toString());
                 ki = Float.parseFloat(c22.getText().toString());
                 kd = Float.parseFloat(c23.getText().toString());
-                mainController.pitchRegulator.setCoefficients(kp, ki, kd);
+                 mainController.pitchRegulator.setCoefficients(kp, ki, kd);
                 kp = Float.parseFloat(c31.getText().toString());
                 ki = Float.parseFloat(c32.getText().toString());
                 kd = Float.parseFloat(c33.getText().toString());
-                mainController.yawRegulator.setCoefficients(kp, ki, kd);
-
-
+                 mainController.yawRegulator.setCoefficients(kp, ki, kd);
             }
         });
     }
@@ -351,27 +351,85 @@ public class MainActivity extends Activity
 
         @Override
         public Response serve(IHTTPSession session) {
-            String msg = "<html><body><h1>Command : </h1>\n";
-            msg += "<p>" + session.getUri() + " !</p>";
-            if(msg.equals("start"))
+            //String msg ;
+          //  msg = session.getUri() ;
+            HashMap<String, String> inputReceived = (HashMap<String, String>) session.getParms();
+            String msg = inputReceived.get("command");
+            Log.d("Data Received", msg);
+            String  newmsg = msg.substring(1,5);
+            boolean isnum;
+            int newthrust;
+            isnum = isNumeric(newmsg);
+            if(isnum == true){
+                newthrust = Integer.parseInt(newmsg);
+                mainController.meanThrust = newthrust;
+            }
+
+            if(msg.equals("constants"))
             {
+                 kp = Float.valueOf(inputReceived.get("kp"));
+                 ki = Float.valueOf(inputReceived.get("ki"));
+                 kd = Float.valueOf(inputReceived.get("kd"));
+                mainController.rollRegulator.setCoefficients(kp, ki, kd);
+                mainController.pitchRegulator.setCoefficients(kp, ki, kd);
+                kp = Float.valueOf(inputReceived.get("ykp"));
+                ki = Float.valueOf(inputReceived.get("yki"));
+                kd = Float.valueOf(inputReceived.get("ykd"));
+                mainController.yawRegulator.setCoefficients(kp, ki, kd);
+            }
+
+            if(msg.equals("reset"))
+            {
+                kp = 0.6f;
+                ki = 0.0f;
+                kd = 0.15f;
+                mainController.yawRegulator.setCoefficients(kp, ki, kd);
+                mainController.rollRegulator.setCoefficients(kp, ki, kd);
+                mainController.pitchRegulator.setCoefficients(kp, ki, kd);
+            }
+
+            if(msg.equals("start"))
+
+            {
+                mainController.meanThrust = 30.0f;
+               // mHandler.postDelayed(mWaitRunnable, 100);
+
 
                 try {
                     mainController.start();
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
-                return newFixedLengthResponse(msg + "start" + "</body><html>\n");
+                return newFixedLengthResponse("Start" + "</body><html>\n");
             }
-            if(msg.equals("stop"))
+            else if(msg.equals("stop"))
             {
-                mainController.stop();
-                return newFixedLengthResponse(msg + "stop" + "</body></html>\n" );
+                mainController.emergencyStop();
+                return newFixedLengthResponse("Stop" + "</body></html>\n" );
             }
+            else if(msg.equals("zero")){
+                mainController.posRotSensors.setCurrentStateAsZero();
+                return newFixedLengthResponse("Zero" + "</body><html>\n");
+            }
+
             else {
                 return newFixedLengthResponse(msg + "</body></html>\n");
             }
+
         }
+        public boolean isNumeric(String str)
+        {
+            try
+            {
+                double d = Double.parseDouble(str);
+            }
+            catch(NumberFormatException nfe)
+            {
+                return false;
+            }
+            return true;
+        }
+
     }
 
 
@@ -497,7 +555,7 @@ public class MainActivity extends Activity
     protected void onPause()
     {
         super.onPause();
-        mainController.stop();
+        mainController.emergencyStop();
 
         if(server != null) {
             server.stop();

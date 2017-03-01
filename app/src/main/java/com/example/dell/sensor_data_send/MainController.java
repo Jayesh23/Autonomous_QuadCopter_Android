@@ -14,7 +14,7 @@ public class MainController
 
         motorsPowers = new MotorsPowers();
 
-        yawRegulator = new PidAngleRegulator(0.0f, 0.0f, 0.0f, PID_DERIV_SMOOTHING);
+        yawRegulator = new PidAngleRegulator(0.6f, 0.0f, 0.15f, PID_DERIV_SMOOTHING);
         pitchRegulator = new PidAngleRegulator(0.6f, 0.0f, 0.15f, PID_DERIV_SMOOTHING);
         rollRegulator = new PidAngleRegulator(0.6f, 0.0f, 0.15f, PID_DERIV_SMOOTHING);
 
@@ -30,7 +30,7 @@ public class MainController
     public void start() throws Exception {
         // Initializations.
         regulatorEnabled = true;
-        meanThrust = 150.0f;
+        meanThrust = 0.0f;
 
         // Start the sensors.
         posRotSensors.resume();
@@ -94,7 +94,8 @@ public class MainController
                     // If the quadcopter is too inclined, emergency stop it.
                     if (Math.abs(currentPitch) > MAX_SAFE_PITCH_ROLL ||
                             Math.abs(currentRoll) > MAX_SAFE_PITCH_ROLL) {
-                        emergencyStop();
+//                        emergencyStop();
+                        meanThrust = 0 ;
                     }
                 }
 
@@ -173,7 +174,7 @@ public class MainController
             return (int) val;
     }
 
-    private void emergencyStop() {
+    public void emergencyStop() {
         // TODO
         // The motors should stop gradually, to avoid hitting the ground too hard ?
         regulatorEnabled = false;

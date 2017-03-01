@@ -59,6 +59,7 @@ public class PidAngleRegulator
         this.kd = kd;
     }
 
+
     public void resetIntegrator()
     {
         integrator = 0.0f;
