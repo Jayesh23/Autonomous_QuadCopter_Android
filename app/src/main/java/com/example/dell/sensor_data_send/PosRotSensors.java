@@ -97,12 +97,23 @@ public class PosRotSensors implements SensorEventListener
         return newMeasurementsReady;
     }
 
+    public static float anglef ;
+    public static int anglei ;
     public static float getMainAngle(float angle)
     {
         while(angle < -180.0f)
             angle += 360.0f;
         while(angle > 180.0f)
             angle -= 360.0f;
+
+        if(angle<=1 && angle>=-1)
+        {
+            angle = 0;
+        }
+
+        anglef = angle*100 ;
+        anglei = (int)anglef ;
+        angle = anglei/(100.0f) ;
 
         return angle;
     }

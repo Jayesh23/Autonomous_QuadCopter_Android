@@ -21,10 +21,15 @@ import android.widget.TextView;
 import android.widget.Button;
 import android.widget.Toast;
 
+import java.io.BufferedWriter;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.OutputStreamWriter;
+import java.io.PrintWriter;
+import java.net.InetAddress;
+import java.net.Socket;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
@@ -45,15 +50,18 @@ public class MainActivity extends Activity
 {
 
     private static final int REQUEST_ENABLE_BT = 1;
+    public int PORT = 15000;
 
+    private Socket socket;
 
     BluetoothAdapter bluetoothAdapter;
 
     ArrayList<BluetoothDevice> pairedDeviceArrayList;
 
     TextView ang, speed;
-    Button calibButton, constButton;
-
+    Button calibButton, constButton,sendButton;
+    private boolean connected = false;
+    MainController.MotorsPowers powers;
     TextView textInfo, textStatus;
     ListView listViewPairedDevice;
 
@@ -71,17 +79,46 @@ public class MainActivity extends Activity
 
 
     public MyServer server;
-    private String text1, text2;
+    private String text1, text2,serverIpAddress = "192.168.43.31";
     float kp, ki, kd;
-    EditText c11, c12, c13, c21, c22, c23, c31, c32, c33;
-
+    EditText c11, c12, c13, c21, c22, c23, c31, c32, c33,ipAddr;
+    PrintWriter out;
     public Handler mHandler = new Handler();
+    public int ne[] = new int[10] ;
+    public int nw[] = new int[10] ;
+    public int se[] = new int[10] ;
+    public int sw[] = new int[10] ;
+    public int ane, anw, ase,  asw ;
+    public static String valuesn ;
 
     public Runnable mWaitRunnable = new Runnable() {
         public void run() {
             text1 = PosRotSensors.text;
             ang.setText(text1);
-            text2 = MainController.values;
+            MainController.MotorsPowers m = mainController.getMotorsPowers() ;
+
+            //shift array values
+            for(int i=0; i<9 ; i++){
+                ne[i] = ne[i+1];
+                se[i] = se[i+1];
+                nw[i] = nw[i+1];
+                sw[i] = sw[i+1];
+            }
+
+            ne[9] = m.ne ;
+            se[9] = m.se ;
+            nw[9] = m.nw ;
+            sw[9] = m.sw ;
+
+            ane = (ne[0]+ne[1]+ne[2]+ne[3]+ne[4]+ne[5]+ne[6]+ne[7]+ne[8]+ne[9])/10;
+            anw = (nw[0]+nw[1]+nw[2]+nw[3]+nw[4]+nw[5]+nw[6]+nw[7]+nw[8]+nw[9])/10;
+            ase = (se[0]+se[1]+se[2]+se[3]+se[4]+se[5]+se[6]+se[7]+se[8]+se[9])/10;
+            asw = (sw[0]+sw[1]+sw[2]+sw[3]+sw[4]+sw[5]+sw[6]+sw[7]+sw[8]+sw[9])/10;
+
+            valuesn = (">" + Float.toString(anw) + ", " + Float.toString(ane) +
+                    ", " + Float.toString(ase) + ", " + Float.toString(asw) + "\n");
+
+            text2 = valuesn;
             speed.setText(text2);
 
 
@@ -110,6 +147,10 @@ public class MainActivity extends Activity
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        ne[0]=ne[1]=ne[2]=ne[3]=ne[4]=ne[5]=ne[6]=ne[7]=ne[8]=ne[9]=0;
+        nw[0]=nw[1]=nw[2]=nw[3]=nw[4]=nw[5]=nw[6]=nw[7]=nw[8]=nw[9]=0;
+        se[0]=se[1]=se[2]=se[3]=se[4]=se[5]=se[6]=se[7]=se[8]=se[9]=0;
+        sw[0]=sw[1]=sw[2]=sw[3]=sw[4]=sw[5]=sw[6]=sw[7]=sw[8]=sw[9]=0;
         textInfo = (TextView)findViewById(R.id.info);
         textStatus = (TextView)findViewById(R.id.status);
         listViewPairedDevice = (ListView)findViewById(R.id.pairedlist);
@@ -178,8 +219,57 @@ public class MainActivity extends Activity
                  mainController.yawRegulator.setCoefficients(kp, ki, kd);
             }
         });
+        sendButton = (Button)findViewById(R.id.send);
+        sendButton.setOnClickListener(connectListener);
+        ipAddr = (EditText)findViewById(R.id.ipaddress);
+        ipAddr.setText(serverIpAddress);
     }
+    private Button.OnClickListener connectListener = new Button.OnClickListener() {
+        @Override
+        public void onClick(View v) {
+            if (!connected) {
+                if (!serverIpAddress.equals("")) {
+                    sendButton.setText("Stop Streaming");
+                    Thread cThread = new Thread(new ClientThread());
+                    cThread.start();
+                }
+            }
+            else{
+                sendButton.setText("Start Streaming");
+                connected = false;
+            }
+        }
+    };
 
+    public class ClientThread implements Runnable {
+        public void run() {
+            try {
+                serverIpAddress = ipAddr.getText().toString();
+                InetAddress serverAddress = InetAddress.getByName(serverIpAddress);
+                socket = new Socket(serverAddress, PORT);
+                connected = true;
+                out = new PrintWriter(new BufferedWriter(new OutputStreamWriter(socket.getOutputStream())), true);
+                while (connected) {
+                    powers = mainController.getMotorsPowers();
+                    PosRotSensors.HeliState temp= mainController.getSensorsData();
+                    out.printf("%d %d %d %d %f %f %f\n", powers.nw , powers.ne , powers.se , powers.sw,temp.roll,temp.pitch,temp.yaw);
+                    out.flush();
+                    Thread.sleep(150);
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            } finally {
+                try {
+                    connected = false;
+                    sendButton.setText("Start Streaming");
+                    //out.close();
+                    socket.close();
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+    }
     @Override
     protected void onStart() {
         super.onStart();
@@ -407,13 +497,13 @@ public class MainActivity extends Activity
                 mainController.emergencyStop();
                 return newFixedLengthResponse("Stop" + "</body></html>\n" );
             }
-            else if(msg.equals("zero")){
+            if(msg.equals(" zero")){
                 mainController.posRotSensors.setCurrentStateAsZero();
                 return newFixedLengthResponse("Zero" + "</body><html>\n");
             }
 
-            else {
-                return newFixedLengthResponse(msg + "</body></html>\n");
+//            else {
+            {   return newFixedLengthResponse(msg + "</body></html>\n");
             }
 
         }

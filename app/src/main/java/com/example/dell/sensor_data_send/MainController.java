@@ -138,6 +138,9 @@ public class MainController
                     motorsPowers.ne = motorSaturation(tempPowerNE);
                     motorsPowers.se = motorSaturation(tempPowerSE);
                     motorsPowers.sw = motorSaturation(tempPowerSW);
+
+
+
                 } else {
                     motorsPowers.nw = 0;
                     motorsPowers.ne = 0;
@@ -180,13 +183,10 @@ public class MainController
         regulatorEnabled = false;
     }
 
-    public class MotorsPowers {
-        public int nw, ne, se, sw; // 0-1023 (10 bits values).
-
-        public int getMean() {
-            return (nw + ne + se + sw) / 4;
-        }
+    public class MotorsPowers{
+        int ne,nw,se,sw;
     }
+
 
     private MainActivity activity;
     public float meanThrust, yawAngleTarget, pitchAngleTarget, rollAngleTarget;
