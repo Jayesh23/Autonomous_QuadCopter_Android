@@ -503,7 +503,7 @@ public class MainActivity extends Activity
             }
             if(msg.equals("sstop"))
             {
-                mainController.meanThrust = 0.0f;
+                mainController.meanThrust=0.0f;
                 return newFixedLengthResponse("Stop" + "</body></html>\n" );
             }
             if(msg.equals("szero")){
