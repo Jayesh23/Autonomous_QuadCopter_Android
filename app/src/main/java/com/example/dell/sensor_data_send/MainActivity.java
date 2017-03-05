@@ -46,11 +46,13 @@ import static com.example.dell.sensor_data_send.R.id.constants;
 
 import com.example.dell.sensor_data_send.MainController;
 
+
 public class MainActivity extends Activity
 {
 
     private static final int REQUEST_ENABLE_BT = 1;
     public int PORT = 15000;
+
 
     private Socket socket;
 
@@ -61,6 +63,7 @@ public class MainActivity extends Activity
     TextView ang, speed;
     Button calibButton, constButton,sendButton;
     private boolean connected = false;
+    public float alt;
     MainController.MotorsPowers powers;
     TextView textInfo, textStatus;
     ListView listViewPairedDevice;
@@ -93,11 +96,15 @@ public class MainActivity extends Activity
 
     public Runnable mWaitRunnable = new Runnable() {
         public void run() {
+
             text1 = PosRotSensors.text;
             ang.setText(text1);
             MainController.MotorsPowers m = mainController.getMotorsPowers() ;
+//            {
+//                Log.d("altitude" , " " + height.currentAltitude);
+//            }
 
-            //shift array values
+            //shift array value
             for(int i=0; i<9 ; i++){
                 ne[i] = ne[i+1];
                 se[i] = se[i+1];
@@ -217,6 +224,7 @@ public class MainActivity extends Activity
                 ki = Float.parseFloat(c32.getText().toString());
                 kd = Float.parseFloat(c33.getText().toString());
                  mainController.yawRegulator.setCoefficients(kp, ki, kd);
+
             }
         });
         sendButton = (Button)findViewById(R.id.send);
@@ -304,6 +312,7 @@ public class MainActivity extends Activity
                                         int position, long id) {
                     BluetoothDevice device =
                             (BluetoothDevice) parent.getItemAtPosition(position);
+
                     Toast.makeText(MainActivity.this,
                             "Name: " + device.getName() + "\n"
                                     + "Address: " + device.getAddress() + "\n"
@@ -492,14 +501,19 @@ public class MainActivity extends Activity
                 }
                 return newFixedLengthResponse("Start" + "</body><html>\n");
             }
-            else if(msg.equals("stop"))
+            if(msg.equals("sstop"))
+            {
+                mainController.meanThrust = 0.0f;
+                return newFixedLengthResponse("Stop" + "</body></html>\n" );
+            }
+            if(msg.equals("szero")){
+                mainController.posRotSensors.setCurrentStateAsZero();
+                return newFixedLengthResponse("Zero" + "</body><html>\n");
+            }
+            if(msg.equals("estop"))
             {
                 mainController.emergencyStop();
                 return newFixedLengthResponse("Stop" + "</body></html>\n" );
-            }
-            if(msg.equals(" zero")){
-                mainController.posRotSensors.setCurrentStateAsZero();
-                return newFixedLengthResponse("Zero" + "</body><html>\n");
             }
 
 //            else {
@@ -560,9 +574,9 @@ public class MainActivity extends Activity
                 try {
                     bytes = connectedInputStream.read(buffer);
                     String strReceived = new String(buffer, 0, bytes);
-                    final String msgReceived = String.valueOf(bytes) +
-                            " bytes received:\n"
-                            + strReceived;
+                    final String msgReceived = strReceived;
+                    alt = Float.parseFloat(msgReceived);
+
 
                     runOnUiThread(new Runnable(){
 
@@ -586,6 +600,8 @@ public class MainActivity extends Activity
                 }
             }
         }
+
+
 
         public void write(byte[] buffer) {
             try {

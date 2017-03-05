@@ -75,7 +75,7 @@ public class PosRotSensors implements SensorEventListener
 
     public class HeliState
     {
-        public float yaw, pitch, roll; // [degrees].
+        public float yaw, pitch, roll, altitude; // [degrees].
         public long time; // [nanoseconds].
     }
 
@@ -99,6 +99,7 @@ public class PosRotSensors implements SensorEventListener
 
     public static float anglef ;
     public static int anglei ;
+
     public static float getMainAngle(float angle)
     {
         while(angle < -180.0f)
@@ -106,10 +107,10 @@ public class PosRotSensors implements SensorEventListener
         while(angle > 180.0f)
             angle -= 360.0f;
 
-        if(angle<=1 && angle>=-1)
-        {
-            angle = 0;
-        }
+//        if(angle<=1 && angle>=-1)
+//        {
+//            angle = 0;
+//        }
 
         anglef = angle*100 ;
         anglei = (int)anglef ;

@@ -2,6 +2,9 @@ package com.example.dell.sensor_data_send;
 
 import com.example.dell.sensor_data_send.PosRotSensors.HeliState;
 import android.os.SystemClock;
+import android.util.Log;
+
+import com.example.dell.sensor_data_send.MainActivity;
 
 public class MainController
 {
@@ -12,15 +15,20 @@ public class MainController
     public MainController(MainActivity activity) {
         this.activity = activity;
 
+
+
         motorsPowers = new MotorsPowers();
 
-        yawRegulator = new PidAngleRegulator(0.6f, 0.0f, 0.15f, PID_DERIV_SMOOTHING);
+        yawRegulator = new PidAngleRegulator(3.0f, 0.0f, 0.0f, PID_DERIV_SMOOTHING);
         pitchRegulator = new PidAngleRegulator(0.6f, 0.0f, 0.15f, PID_DERIV_SMOOTHING);
         rollRegulator = new PidAngleRegulator(0.6f, 0.0f, 0.15f, PID_DERIV_SMOOTHING);
+        altitudeRegulator = new PidRegulator(0.0f,  100.0f,  0.0f, PID_DERIV_SMOOTHING, 0.0f);
+
 
         yawAngleTarget = 0.0f;
         pitchAngleTarget = 0.0f;
         rollAngleTarget = 0.0f;
+        altitudeTarget = 100.0f;
 
         // Create the sensors manager.
         posRotSensors = new PosRotSensors(activity);
@@ -30,6 +38,7 @@ public class MainController
     public void start() throws Exception {
         // Initializations.
         regulatorEnabled = true;
+        altitudeLockEnabled = true;
         meanThrust = 0.0f;
 
         // Start the sensors.
@@ -63,6 +72,7 @@ public class MainController
     public static String values;
 
     public class ControllerThread extends Thread {
+        float currentRoll, currentPitch, currentYaw, currentAltitude;
         @Override
         public void run() {
             again = true;
@@ -78,9 +88,13 @@ public class MainController
                 // Get the sensors data.
                 heliState = posRotSensors.getState();
 
-                float currentYaw = heliState.yaw;
-                float currentPitch = heliState.pitch;
-                float currentRoll = heliState.roll;
+                 currentYaw = heliState.yaw;
+                 currentPitch = heliState.pitch;
+                 currentRoll = heliState.roll;
+                 currentAltitude = activity.alt ;
+                {
+                    Log.d("////////////height = ", " " + currentAltitude);
+                }
 
                 long currentTime = heliState.time;
                 float dt = ((float) (currentTime - previousTime)) / 1000000000.0f; // [s].
@@ -108,7 +122,16 @@ public class MainController
                     yawForce = yawRegulator.getInput(yawAngleTarget, currentYaw, dt);
                     pitchForce = pitchRegulator.getInput(pitchAngleTarget, currentPitch, dt);
                     rollForce = rollRegulator.getInput(rollAngleTarget, currentRoll, dt);
-                    altitudeForce = meanThrust;
+
+
+                    if(altitudeLockEnabled)
+                    {
+                        altitudeForce = altitudeRegulator.getInput(altitudeTarget, currentAltitude, dt);
+                    }
+                    else
+                    {
+                        altitudeForce = meanThrust;
+                    }
 
                     // Compute the power of each motor.
                     double tempPowerNW, tempPowerNE, tempPowerSE, tempPowerSW;
@@ -185,17 +208,21 @@ public class MainController
 
     public class MotorsPowers{
         int ne,nw,se,sw;
+        public int getMean(){
+            return (ne+nw+se+sw)/4;
+        }
     }
 
 
     private MainActivity activity;
-    public float meanThrust, yawAngleTarget, pitchAngleTarget, rollAngleTarget;
+    public float meanThrust, yawAngleTarget, pitchAngleTarget, rollAngleTarget, altitudeTarget;
     public PosRotSensors posRotSensors;
     private MotorsPowers motorsPowers;
-    private boolean regulatorEnabled;
+    private boolean regulatorEnabled, altitudeLockEnabled;
     public PidAngleRegulator yawRegulator, pitchRegulator, rollRegulator;
+    public PidRegulator altitudeRegulator;
     private PosRotSensors.HeliState heliState;
-    private ControllerThread controllerThread;
+    public ControllerThread controllerThread;
     private long previousTime;
 }
 
