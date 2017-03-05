@@ -39,7 +39,7 @@ public class MainController
         // Initializations.
         regulatorEnabled = true;
         altitudeLockEnabled = true;
-        meanThrust = 0.0f;
+        meanThrust = 120.0f;
 
         // Start the sensors.
         posRotSensors.resume();
@@ -127,6 +127,7 @@ public class MainController
                     if(altitudeLockEnabled)
                     {
                         altitudeForce = altitudeRegulator.getInput(altitudeTarget, currentAltitude, dt);
+                        Log.d(altitudeForce + " " , "altitudeforce****************");
                     }
                     else
                     {
